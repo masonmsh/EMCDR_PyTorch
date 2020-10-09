@@ -1,2 +1,3 @@
 # EMCDR_PyTorch
-EMCDR implemented using pytorch
+**paper**
+[Cross-Domain Recommendation: An Embedding and Mapping Approach](https://www.ijcai.org/Proceedings/2017/0343.pdf "IJCAI 2017")
