@@ -5,6 +5,9 @@ import argparse
 import torch
 import torch.nn as nn
 from time import time
+from time import strftime
+from time import localtime
+import logging
 
 from model import MF, MLP
 
@@ -70,9 +73,14 @@ def train(mapping, opt, mse_loss, u, y):
 def main(dataset, dim, layers, lr, reg, epochs, batchsize):
     n_user = overlap_user(dataset)
     print(n_user)
+    logging.info(str(n_user))
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     mf_s, mf_t = load_model(dataset, dim)
     mapping = MLP(dim, layers)
+    mf_s = mf_s.to(device)
+    mf_t = mf_t.to(device)
+    mapping = mapping.to(device)
     opt = torch.optim.Adam(mapping.parameters(), lr=lr, weight_decay=reg)
     mse_loss = nn.MSELoss()
 
@@ -80,20 +88,30 @@ def main(dataset, dim, layers, lr, reg, epochs, batchsize):
     for epoch in range(epochs):
         loss_sum = 0
         for users in batch_user(n_user, batchsize):
-            u = mf_s.get_embed(users)
-            y = mf_t.get_embed(users)
+            us = torch.tensor(users).long()
+            us = us.to(device)
+            u = mf_s.get_embed(us)
+            y = mf_t.get_embed(us)
             loss = train(mapping, opt, mse_loss, u, y)
             loss_sum += loss
         print('Epoch %d [%.1f] loss = %f' % (epoch, time()-start, loss_sum))
+        logging.info('Epoch %d [%.1f] loss = %f' %
+                     (epoch, time()-start, loss_sum))
         start = time()
 
     mfile = 'pretrain/%s/Mapping.pth.tar' % dataset
     torch.save(mapping.state_dict(), mfile)
     print('save [%.1f]' % (time()-start))
+    logging.info('save [%.1f]' % (time()-start))
 
 
 if __name__ == '__main__':
     args = parse_args()
-    args.dataset = default_args()
+    # args.dataset = default_args()
+    log_dir = "log/%s/" % args.dataset
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir, exist_ok=True)
+    logging.basicConfig(filename=os.path.join(log_dir, "%s_%s_%s_%s" % (
+        args.dataset, args.layers, args.dim, strftime('%Y-%m-%d--%H-%M-%S', localtime()))), level=logging.INFO)
     main(args.dataset, args.dim, args.layers, args.lr,
          args.reg, args.epochs, args.batchsize)

@@ -57,9 +57,9 @@ def load_model(dataset, dim, layers):
     mf_s = MF(s_user, s_item, dim)
     mf_t = MF(t_user, t_item, dim)
     mapping = MLP(dim, layers)
-    mf_s.load_state_dict(torch.load(sp))
-    mf_t.load_state_dict(torch.load(tp))
-    mapping.load_state_dict(torch.load(mp))
+    mf_s.load_state_dict(torch.load(sp, map_location=torch.device('cpu')))
+    mf_t.load_state_dict(torch.load(tp, map_location=torch.device('cpu')))
+    mapping.load_state_dict(torch.load(mp, map_location=torch.device('cpu')))
     return mf_s, mf_t, mapping
 
 
@@ -133,7 +133,8 @@ def main(dataset, dim, layers, batchsize, topk):
         truths = []
         for users in batch_user(len(test_users), batchsize):
             groundTrue = [testDict[u] for u in users]
-            user_embed = mapping(mf_s.get_embed(users))
+            us = torch.tensor(users).long()
+            user_embed = mapping(mf_s.get_embed(us))
             rating = mf_t.get_rating(user_embed)
             positem = pos_item(trainMat, users)
             train_idx = []
@@ -145,6 +146,7 @@ def main(dataset, dim, layers, batchsize, topk):
             _, rating_K = torch.topk(rating, k=topk)
             ratings.append(rating_K.cpu())
             truths.append(groundTrue)
+            print(users[-1], len(test_users))
         X = zip(ratings, truths)
         test_results = []
         for x in X:
@@ -163,5 +165,5 @@ def main(dataset, dim, layers, batchsize, topk):
 
 if __name__ == '__main__':
     args = parse_args()
-    args.dataset = default_args()
+    # args.dataset = default_args()
     main(args.dataset, args.dim, args.layers, args.batchsize, args.topk)

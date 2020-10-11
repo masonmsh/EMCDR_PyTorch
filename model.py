@@ -12,7 +12,6 @@ class MF(nn.Module):
         self.f = nn.Sigmoid()
 
     def get_embed(self, u):
-        u = torch.tensor(u).long()
         return self.U_emb(u)
 
     def get_rating(self, user):
@@ -21,7 +20,6 @@ class MF(nn.Module):
         return self.f(score)
 
     def forward(self, u):
-        u = torch.tensor(u).long()
         user = self.U_emb(u)
         item = self.V_emb.weight.t()
         score = torch.matmul(user, item)
